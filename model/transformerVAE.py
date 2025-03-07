@@ -1,9 +1,8 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from tokenizers import Tokenizer
 import warnings
-from building_blocks import PositionalEmbedding, Embedding, TransformerBlock, DecoderBlock
+from model.building_blocks import PositionalEmbedding, Embedding, TransformerBlock, DecoderBlock
 warnings.simplefilter("ignore")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -36,7 +35,7 @@ class TransformerEncoder(nn.Module):
         for layer in self.layers:
             out = layer(out,out,out)
 
-        mean, logvar = self.mean_layer(x), self.logvar_layer(x)
+        mean, logvar = self.mean_layer(out), self.logvar_layer(out)
 
         return mean, logvar
     
@@ -84,12 +83,12 @@ class TransformerVAE(nn.Module):
            expansion_factor: factor which determines number of linear layers in feed forward layer
            n_heads: number of heads in multihead attention
         """
-        self.tokenizer = Tokenizer.from_file("drb_tokenizer.json")
-        self.tokenizer.enable_truncation(max_length=4096)
+
         self.lin_proj = nn.Linear(16, embed_dim)
         self.encoder = TransformerEncoder(seq_length, src_vocab_size, embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.decoder = TransformerDecoder(embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.lstm = nn.LSTM(embed_dim, embed_dim)
+        self.linear_proj = nn.Linear(embed_dim, src_vocab_size)
 
     def forward(self, x):
         """
@@ -99,12 +98,14 @@ class TransformerVAE(nn.Module):
         out:
             out: final vector which returns probabilities of each target word
         """
+
         mean, logvar = self.encoder(x)
         z = self.reparameterization(mean, logvar)
         decoder_input = self.lin_proj(z)
         decode = self.decoder(decoder_input)
-        out = self.lstm(decode)
-        return out
+        out_lstm, _ = self.lstm(decode)
+        out = self.linear_proj(out_lstm)
+        return out, mean, logvar
     
     def reparameterization(self, mean, var):
         epsilon = torch.randn_like(var).to(device)      

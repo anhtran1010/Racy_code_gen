@@ -115,6 +115,7 @@ class DecoderBlock(nn.Module):
            n_heads: number of attention heads
         
         """
+        self.attention = nn.MultiheadAttention(embed_dim, n_heads)
         self.norm = nn.LayerNorm(embed_dim)
         self.dropout = nn.Dropout(0.2)
         self.transformer_block = TransformerBlock(embed_dim, expansion_factor, n_heads)

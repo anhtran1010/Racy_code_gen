@@ -16,7 +16,7 @@ class KLAnnealer:
         """
 
         self.current_step = 0
-        self.bce = nn.BCELoss()
+        self.ce = nn.CrossEntropyLoss()
         self.total_steps = total_steps
         self.k = k
         self.b = b
@@ -32,8 +32,8 @@ class KLAnnealer:
             out (torch.tensor): KL divergence loss multiplied by the slope of the annealing function.
         """
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0)
-        bce_loss = self.bce(x, y)
-        out = kld * self._slope() + bce_loss
+        ce_loss = self.ce(x, y)
+        out = kld * self._slope() + ce_loss
         return out
 
     def step(self):
