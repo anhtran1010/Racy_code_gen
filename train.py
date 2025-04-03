@@ -7,6 +7,7 @@ import numpy as np
 from code_dataset import RacyCodesDataset
 from torch.utils.data import DataLoader, random_split
 import json 
+from  torch.optim.lr_scheduler import StepLR
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 tokenizer = Tokenizer.from_file("/home/abtran/Racy_code_gen/buggy_code_tokens.json")
@@ -15,7 +16,7 @@ tokenizer.enable_truncation(max_length=4096)
 with open("race_codes.json") as rc:
     race_codes = json.load(rc)
 model = TransformerVAE(embed_dim=64, src_vocab_size=tokenizer.get_vocab_size(),  seq_length=4096).to(device=torch.device(device))
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 train_code, test_code = random_split(race_codes, [0.9, 0.1])
 train_set = RacyCodesDataset(train_code, tokenizer)
 test_set = RacyCodesDataset(test_code, tokenizer)
@@ -23,8 +24,8 @@ train_data = DataLoader(train_set)
 test_data = DataLoader(test_set)
 train_losses = []
 test_losses = []
-
-for epoch in range(50):
+scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+for epoch in range(100):
     print(f"starting epoch {epoch}")
     train_loss = []
     test_loss = []
@@ -44,10 +45,11 @@ for epoch in range(50):
     
     model.eval()
     for file_name, tokenized_input in test_data:
-        output, mu, logvar = model(tokenized_input)
-        loss = loss_fn(output, tokenized_input, logvar, mu)
+        output, mu, logvar = model(tokenized_input[0])
+        loss = loss_fn(output, tokenized_input[0], logvar, mu)
         test_loss.append(loss.cpu().data.numpy())
     test_losses.append(np.mean(test_loss))
+    scheduler.step()
     
 torch.save(model, 'racecode_vae.pth')
 plt.figure(figsize=(12, 8))
@@ -58,4 +60,10 @@ plt.ylabel('Loss')
 plt.title('Train vs Test Losses')
 plt.savefig("Train_Test_losses")
     
-
+mean = torch.zeros(4096, 8).to(device)
+var = torch.ones(4096, 8).to(device)
+epsilon = torch.randn_like(var).to(device)      
+z_sample = mean + var*epsilon
+x_decoded = model.decode(z_sample)
+print(x_decoded.shape)
+print(tokenizer.decode(torch.argmax(x_decoded, dim=1).tolist()))

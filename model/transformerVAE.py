@@ -26,8 +26,8 @@ class TransformerEncoder(nn.Module):
         self.positional_encoder = PositionalEmbedding(seq_len, embed_dim)
 
         self.layers = nn.ModuleList([TransformerBlock(embed_dim, expansion_factor, n_heads) for i in range(num_layers)])
-        self.mean_layer = nn.Linear(embed_dim, 16)
-        self.logvar_layer = nn.Linear(embed_dim, 16)
+        self.mean_layer = nn.Linear(embed_dim, 8)
+        self.logvar_layer = nn.Linear(embed_dim, 8)
 
     def forward(self, x):
         embed_out = self.embedding_layer(x)
@@ -71,7 +71,7 @@ class TransformerDecoder(nn.Module):
         return x
 
 class TransformerVAE(nn.Module):
-    def __init__(self, embed_dim, src_vocab_size, seq_length,num_layers=6, expansion_factor=2, n_heads=8):
+    def __init__(self, embed_dim, src_vocab_size, seq_length,num_layers=5, expansion_factor=2, n_heads=4):
         super(TransformerVAE, self).__init__()
         """  
         Args:
@@ -84,7 +84,7 @@ class TransformerVAE(nn.Module):
            n_heads: number of heads in multihead attention
         """
 
-        self.lin_proj = nn.Linear(16, embed_dim)
+        self.lin_proj = nn.Linear(8, embed_dim)
         self.encoder = TransformerEncoder(seq_length, src_vocab_size, embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.decoder = TransformerDecoder(embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.lstm = nn.LSTM(embed_dim, embed_dim)
@@ -111,4 +111,11 @@ class TransformerVAE(nn.Module):
         epsilon = torch.randn_like(var).to(device)      
         z = mean + var*epsilon
         return z
+    
+    def decode(self, z):
+        decoder_input = self.lin_proj(z)
+        decode = self.decoder(decoder_input)
+        out_lstm, _ = self.lstm(decode)
+        out = self.linear_proj(out_lstm)
+        return out
 
