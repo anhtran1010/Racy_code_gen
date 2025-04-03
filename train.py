@@ -11,7 +11,7 @@ from  torch.optim.lr_scheduler import StepLR
 from torch.cuda.amp import GradScaler, autocast
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-tokenizer = Tokenizer.from_file("/home/abtran/Racy_code_gen/buggy_code_tokens.json")
+tokenizer = Tokenizer.from_file("buggy_code_tokens.json")
 tokenizer.enable_truncation(max_length=4096)
 
 with open("race_codes.json") as rc:
