@@ -89,6 +89,7 @@ class TransformerVAE(nn.Module):
         self.decoder = TransformerDecoder(embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.lstm = nn.LSTM(embed_dim, embed_dim)
         self.linear_proj = nn.Linear(embed_dim, src_vocab_size)
+        self.out_act = nn.Softmax(dim=1)
 
     def forward(self, x):
         """
@@ -117,5 +118,6 @@ class TransformerVAE(nn.Module):
         decode = self.decoder(decoder_input)
         out_lstm, _ = self.lstm(decode)
         out = self.linear_proj(out_lstm)
+        out = self.out_act(out)
         return out
 
