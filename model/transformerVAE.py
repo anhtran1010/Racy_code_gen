@@ -19,15 +19,15 @@ class TransformerEncoder(nn.Module):
     Returns:
         out: output of the encoder
     """
-    def __init__(self, seq_len, vocab_size, embed_dim, num_layers=2, expansion_factor=2, n_heads=8):
+    def __init__(self, seq_len, vocab_size, embed_dim, num_layers=2, expansion_factor=2, n_heads=8, z_dim=2):
         super(TransformerEncoder, self).__init__()
         
         self.embedding_layer = Embedding(vocab_size, embed_dim)
         self.positional_encoder = PositionalEmbedding(seq_len, embed_dim)
 
         self.layers = nn.ModuleList([TransformerBlock(embed_dim, expansion_factor, n_heads) for i in range(num_layers)])
-        self.mean_layer = nn.Linear(embed_dim, 8)
-        self.logvar_layer = nn.Linear(embed_dim, 8)
+        self.mean_layer = nn.Linear(embed_dim, z_dim)
+        self.logvar_layer = nn.Linear(embed_dim, z_dim)
 
     def forward(self, x):
         embed_out = self.embedding_layer(x)
@@ -71,7 +71,7 @@ class TransformerDecoder(nn.Module):
         return x
 
 class TransformerVAE(nn.Module):
-    def __init__(self, embed_dim, src_vocab_size, seq_length,num_layers=5, expansion_factor=2, n_heads=4):
+    def __init__(self, embed_dim, src_vocab_size, seq_length,num_layers=4, expansion_factor=2, n_heads=4, z_dim= 2):
         super(TransformerVAE, self).__init__()
         """  
         Args:
@@ -84,8 +84,8 @@ class TransformerVAE(nn.Module):
            n_heads: number of heads in multihead attention
         """
 
-        self.lin_proj = nn.Linear(8, embed_dim)
-        self.encoder = TransformerEncoder(seq_length, src_vocab_size, embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
+        self.lin_proj = nn.Linear(z_dim, embed_dim)
+        self.encoder = TransformerEncoder(seq_length, src_vocab_size, embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads, z_dim=z_dim)
         self.decoder = TransformerDecoder(embed_dim, num_layers=num_layers, expansion_factor=expansion_factor, n_heads=n_heads)
         self.lstm = nn.LSTM(embed_dim, embed_dim)
         self.linear_proj = nn.Linear(embed_dim, src_vocab_size)

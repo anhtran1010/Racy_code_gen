@@ -17,7 +17,7 @@ tokenizer.enable_truncation(max_length=4096)
 with open("race_codes.json") as rc:
     race_codes = json.load(rc)
 model = TransformerVAE(embed_dim=64, src_vocab_size=tokenizer.get_vocab_size(),  seq_length=4096).to(device=torch.device(device))
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 train_code, test_code = random_split(race_codes, [0.9, 0.1])
 train_set = RacyCodesDataset(train_code, tokenizer)
 test_set = RacyCodesDataset(test_code, tokenizer)
@@ -25,7 +25,7 @@ train_data = DataLoader(train_set)
 test_data = DataLoader(test_set)
 train_losses = []
 test_losses = []
-scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+scheduler = StepLR(optimizer, step_size=40, gamma=0.1)
 scaler = GradScaler()
 loss_fn = KLAnnealer(total_steps=len(train_data))
 for epoch in range(100):
@@ -57,17 +57,10 @@ for epoch in range(100):
     
 torch.save(model, 'racecode_vae.pth')
 plt.figure(figsize=(12, 8))
-plt.plot(np.arange(50), train_losses, label="Train Loss",  color='blue')
-plt.plot(np.arange(50), test_losses, label="Test Loss",  color='red')
+plt.plot(np.arange(100), train_losses, label="Train Loss",  color='blue')
+plt.plot(np.arange(100), test_losses, label="Test Loss",  color='red')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.title('Train vs Test Losses')
 plt.savefig("Train_Test_losses")
     
-mean = torch.zeros(4096, 8).to(device)
-var = torch.ones(4096, 8).to(device)
-epsilon = torch.randn_like(var).to(device)      
-z_sample = mean + var*epsilon
-x_decoded = model.decode(z_sample)
-print(x_decoded.shape)
-print(tokenizer.decode(torch.argmax(x_decoded, dim=1).tolist()))
